@@ -4,7 +4,29 @@ description: 'Action for creating Kyma runtime on SAP BTP Platform'
 runs:
   using: 'composite'
   steps:
-    - name: ensure terraform
-      if: ${{ always() }}
-      run: terraform --help 
+    - name: Create btp resources
+      run: |
+        cd tests/btp/tf
+        echo "$BTP_TFVARS" > local.tfvars
+        terraform init
+        terraform apply -auto-approve -var-file=local.tfvars -auto-approve
+        echo "SUBACC_ID=$(terraform output -raw subaccount_id)" >> $GITHUB_ENV
+      shell: bash
+      env:
+        BTP_TFVARS: ${{ secrets.BTP_TFVARS }}
+        TF_VAR_BTP_NEW_SUBACCOUNT_NAME: serverless-test-${{ github.sha }}-${{ github.run_attempt }}
+
+
+    - name: Force delete btp resources
+      if: always()
+      run: |
+        . ./set-tf-envs.sh
+        ../bin/btp login --url $BTP_BACKEND_URL --user $BTP_BOT_USER --password $BTP_BOT_PASSWORD --idp $BTP_CUSTOM_IAS_TENANT --subdomain $BTP_GLOBAL_ACCOUNT
+        ../bin/btp delete accounts/subaccount ${SUBACC_ID} --global-account ${BTP_GLOBAL_ACCOUNT} --force-delete true --confirm true
+      env:
+        BTP_BACKEND_URL: ${{ secrets.BTP_BACKEND_URL }}
+        BTP_BOT_USER: ${{ secrets.BTP_BOT_USER }}
+        BTP_BOT_PASSWORD: ${{ secrets.BTP_BOT_PASSWORD }}
+        BTP_GLOBAL_ACCOUNT: ${{ secrets.BTP_GLOBAL_ACCOUNT }}
+        BTP_CUSTOM_IAS_TENANT: ${{ secrets.BTP_CUSTOM_IAS_TENANT }}
       shell: bash
