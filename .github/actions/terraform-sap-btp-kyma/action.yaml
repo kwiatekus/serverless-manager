@@ -24,7 +24,8 @@ runs:
       id: create-btp-resources
       run: |
         cd ${{ inputs.tf_dir }}
-        echo ${{ inputs.tf_vars }} > local.tfvars
+        echo "${{ inputs.tf_vars }}" > local.tfvars
+        cat local.tfvars
         terraform init
         terraform apply -auto-approve -var-file=local.tfvars -auto-approve
         echo "subaccount_id=$(terraform output -raw subaccount_id)" >> $GITHUB_OUTPUT
