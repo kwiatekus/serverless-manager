@@ -24,11 +24,19 @@ runs:
       id: create-btp-resources
       run: |
         cd ${{ inputs.tf_dir }}
-        echo "${{ inputs.tf_vars }}" > local.tfvars
-        cat local.tfvars
         terraform init
-        terraform apply -auto-approve -var-file=local.tfvars -auto-approve
+        terraform apply -auto-approve -auto-approve
         echo "subaccount_id=$(terraform output -raw subaccount_id)" >> $GITHUB_OUTPUT
       shell: bash
       env:
         TF_VAR_BTP_NEW_SUBACCOUNT_NAME: ${{ inputs.btp_subaccount_name }}
+        TF_VAR_BTP_NEW_SUBACCOUNT_REGION: ${{ inputs.btp_subaccount_region }}
+        TF_VAR_BTP_BACKEND_URL: ${{ inputs.btp_backend_url }}
+        TF_VAR_BTP_BOT_USER: ${{ inputs.btp_user }}
+        TF_VAR_BTP_BOT_PASSWORD: ${{ inputs.btp_password }}
+        TF_VAR_BTP_CUSTOM_IAS_TENANT: ${{ inputs.btp_idp_tenant }}
+        TF_VAR_BTP_GLOBAL_ACCOUNT: ${{ inputs.btp_global_account }}
+        TF_VAR_BTP_KYMA_PLAN: ${{ inputs.btp_kyma_plan }}
+        TF_VAR_BTP_KYMA_REGION: ${{ inputs.btp_kyma_region }}
+        
+    
