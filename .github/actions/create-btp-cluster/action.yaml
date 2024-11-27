@@ -1,0 +1,10 @@
+name: 'Create SAP BTP Kyma Runtime'
+description: 'Action for creating Kyma runtime on SAP BTP Platform'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: ensure terraform
+      if: ${{ always() }}
+      run: terraform --help 
+      shell: bash
