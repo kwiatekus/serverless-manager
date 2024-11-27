@@ -1,0 +1,33 @@
+name: 'Create SAP BTP Kyma Environment'
+description: 'Action for creating Kyma runtime on SAP BTP Platform'
+
+inputs:
+  btp_subaccount_name:
+    description: 'btp subaccount'
+    required: true
+  tf_vars:
+    description: '.tfvars content for terraform'
+    required: true
+  tf_dir:
+    description: 'tf directory'
+    required: true
+
+outputs:
+  btp_subaccount_id: 
+    value: ${{ steps.create-btp-resources.outputs.subaccount_id }}
+    description: "ID of the created subaccount"
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create btp resources
+      id: create-btp-resources
+      run: |
+        cd ${{ inputs.tf_dir }}
+        echo ${{ inputs.tf_vars }} > local.tfvars
+        terraform init
+        terraform apply -auto-approve -var-file=local.tfvars -auto-approve
+        echo "subaccount_id=$(terraform output -raw subaccount_id)" >> $GITHUB_OUTPUT
+      shell: bash
+      env:
+        TF_VAR_BTP_NEW_SUBACCOUNT_NAME: ${{ inputs.btp_subaccount_name }}

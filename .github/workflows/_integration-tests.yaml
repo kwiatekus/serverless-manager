@@ -104,8 +104,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - uses: ./.github/actions/setup-go
-      - uses: ./.github/actions/create-btp-cluster
+      # - uses: ./.github/actions/setup-go
+      - uses: ./.github/actions/terraform-sap-btp-kyma
+        id: create-btp-resources
+        with:
+          tf_vars: ${{ secrets.BTP_TFVARS }}
+          tf_dir: tests/btp/tf
+          btp_subaccount_name: serverless-test-${{ github.sha }}-${{ github.run_attempt }}
       # - name: run tests
       #   run: |
       #     make install-serverless-custom-operator
@@ -116,6 +121,15 @@ jobs:
       #     APP_TEST_AZURE_BASIC_AUTH_USERNAME: ${{ secrets.GIT_AUTH_TEST_AZURE_USERNAME }}
       #     APP_TEST_AZURE_BASIC_AUTH_PASSWORD: ${{ secrets.GIT_AUTH_TEST_AZURE_PASSWORD }}
       #     IMG: ${{ inputs.image }}
+      - uses: ./.github/actions/force-delete-sap-btp-subaccount
+        with:
+          btp_subaccount_id: ${{ steps.create-btp-resources.outputs.subaccount_id }}"
+          btp_backend_url: ${{ secrets.BTP_BACKEND_URL}}
+          btp_user: ${{ secrets.BTP_BOT_USER}}
+          btp_password: ${{ secrets.BTP_BOT_PASSWORD}}
+          btp_global_account: ${{ secrets.BTP_GLOBAL_ACCOUNT }}
+          btp_idp_tenant: ${{ secrets.BTP_CUSTOM_IAS_TENANT }}
+
 
 
 
