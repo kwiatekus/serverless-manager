@@ -45,6 +45,8 @@ runs:
       id: create-btp-resources
       run: |
         cd ${{ inputs.tf_dir }}
+        echo "$TF_VAR_BTP_BOT_USER"
+        echo "$TF_VAR_BTP_BOT_PASSWORD"
         terraform init
         terraform apply -auto-approve -auto-approve
         echo "subaccount_id=$(terraform output -raw subaccount_id)" >> $GITHUB_OUTPUT
