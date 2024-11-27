@@ -16,13 +16,14 @@ runs:
         BTP_TFVARS: ${{ secrets.BTP_TFVARS }}
         TF_VAR_BTP_NEW_SUBACCOUNT_NAME: serverless-test-${{ github.sha }}-${{ github.run_attempt }}
 
+    - uses: ./.github/actions/setup-btp
+      if: always()
 
     - name: Force delete btp resources
       if: always()
       run: |
-        . ./set-tf-envs.sh
-        ../bin/btp login --url $BTP_BACKEND_URL --user $BTP_BOT_USER --password $BTP_BOT_PASSWORD --idp $BTP_CUSTOM_IAS_TENANT --subdomain $BTP_GLOBAL_ACCOUNT
-        ../bin/btp delete accounts/subaccount ${SUBACC_ID} --global-account ${BTP_GLOBAL_ACCOUNT} --force-delete true --confirm true
+        btp login --url $BTP_BACKEND_URL --user $BTP_BOT_USER --password $BTP_BOT_PASSWORD --idp $BTP_CUSTOM_IAS_TENANT --subdomain $BTP_GLOBAL_ACCOUNT
+        btp delete accounts/subaccount ${SUBACC_ID} --global-account ${BTP_GLOBAL_ACCOUNT} --force-delete true --confirm true
       env:
         BTP_BACKEND_URL: ${{ secrets.BTP_BACKEND_URL }}
         BTP_BOT_USER: ${{ secrets.BTP_BOT_USER }}
