@@ -5,11 +5,32 @@ inputs:
   btp_subaccount_name:
     description: 'btp subaccount'
     required: true
-  tf_vars:
-    description: '.tfvars content for terraform'
-    required: true
   tf_dir:
     description: 'tf directory'
+    required: true
+  btp_backend_url:
+    description: ''
+    required: true
+  btp_user: 
+    description: ''
+    required: true
+  btp_password: 
+    description: ''
+    required: true
+  btp_global_account:
+    description: ''
+    required: true
+  btp_idp_tenant: 
+    description: ''
+    required: true
+  btp_subaccount_region: 
+    description: ''
+    required: true
+  btp_kyma_region: 
+    description: ''
+    required: true
+  btp_kyma_plan: 
+    description: ''
     required: true
 
 outputs:
