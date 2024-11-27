@@ -9,8 +9,95 @@ on:
         type: string
 
 jobs:
-  operator-integration-test:
-    if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
+  # operator-integration-test:
+  #   if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.pull_request.head.ref }}
+  #         repository: ${{ github.event.pull_request.head.repo.full_name }}
+  #     - uses: ./.github/actions/setup-go
+  #     - uses: ./.github/actions/create-k3d-cluster
+  #     - name: run test
+  #       run: |
+  #         make -C components/operator deploy
+  #         make -C tests/operator test
+  #       env:
+  #         IMG: ${{ inputs.image }}
+  #     - if: ${{ always() }}
+  #       uses: ./.github/actions/collect-cluster-info
+
+  # gardener-integration-test:
+  #   if: ${{ !startsWith(github.event_name, 'pull_request') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/setup-go
+  #     - name: provision gardener
+  #       run: |
+  #         echo "$GARDENER_SA" > $GARDENER_SA_PATH
+  #         echo "Used kubeconfig file has $(sed -n '$=' $GARDENER_SA_PATH) lines"
+  #         make -C hack provision-gardener
+  #       env:
+  #         GARDENER_SECRET_NAME: ${{ secrets.GARDENER_SECRET_NAME }}
+  #         GARDENER_PROJECT: ${{ secrets.GARDENER_PROJECT }}
+  #         GARDENER_SA_PATH: /tmp/gardener-sa.yaml
+  #         GARDENER_SA: ${{ secrets.GARDENER_SA }}
+  #     - name: run test
+  #       run: |
+  #         make -C components/operator deploy
+  #         make -C tests/operator test
+  #       env:
+  #         IMG: ${{ inputs.image }}
+  #     - name: deprovision gardener
+  #       if: ${{ always() }}
+  #       run: make -C hack deprovision-gardener
+  #       env:
+  #         GARDENER_SA_PATH: /tmp/gardener-sa.yaml
+
+  # serverless-integration-test:
+  #   if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.pull_request.head.ref }}
+  #         repository: ${{ github.event.pull_request.head.repo.full_name }}
+  #     - uses: ./.github/actions/setup-go
+  #     - uses: ./.github/actions/create-k3d-cluster
+  #     - name: run test
+  #       run: |
+  #         make install-serverless-custom-operator
+  #         make -C tests/serverless serverless-integration serverless-contract-tests
+  #         make remove-serverless
+  #       env:
+  #         IMG: ${{ inputs.image }}
+
+  # git-auth-integration-test:
+  #   if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.pull_request.head.ref }}
+  #         repository: ${{ github.event.pull_request.head.repo.full_name }}
+  #     - uses: ./.github/actions/setup-go
+  #     - uses: ./.github/actions/create-k3d-cluster
+  #     - name: run tests
+  #       run: |
+  #         make install-serverless-custom-operator
+  #         make -C tests/serverless git-auth-integration
+  #         make remove-serverless
+  #       env:
+  #         APP_TEST_GITHUB_SSH_AUTH_KEY: ${{ secrets.GIT_AUTH_TEST_GITHUB_SSH_KEY }}
+  #         APP_TEST_AZURE_BASIC_AUTH_USERNAME: ${{ secrets.GIT_AUTH_TEST_AZURE_USERNAME }}
+  #         APP_TEST_AZURE_BASIC_AUTH_PASSWORD: ${{ secrets.GIT_AUTH_TEST_AZURE_PASSWORD }}
+  #         IMG: ${{ inputs.image }}
+
+  btp-integration-test:
+    # Do sprawdzenia z docker regisrty
+    # if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,79 +105,23 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
       - uses: ./.github/actions/setup-go
-      - uses: ./.github/actions/create-k3d-cluster
-      - name: run test
-        run: |
-          make -C components/operator deploy
-          make -C tests/operator test
-        env:
-          IMG: ${{ inputs.image }}
-      - if: ${{ always() }}
-        uses: ./.github/actions/collect-cluster-info
+      - uses: ./.github/actions/create-btp-cluster
+      # - name: run tests
+      #   run: |
+      #     make install-serverless-custom-operator
+      #     make -C tests/serverless git-auth-integration
+      #     make remove-serverless
+      #   env:
+      #     APP_TEST_GITHUB_SSH_AUTH_KEY: ${{ secrets.GIT_AUTH_TEST_GITHUB_SSH_KEY }}
+      #     APP_TEST_AZURE_BASIC_AUTH_USERNAME: ${{ secrets.GIT_AUTH_TEST_AZURE_USERNAME }}
+      #     APP_TEST_AZURE_BASIC_AUTH_PASSWORD: ${{ secrets.GIT_AUTH_TEST_AZURE_PASSWORD }}
+      #     IMG: ${{ inputs.image }}
 
-  gardener-integration-test:
-    if: ${{ !startsWith(github.event_name, 'pull_request') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-go
-      - name: provision gardener
-        run: |
-          echo "$GARDENER_SA" > $GARDENER_SA_PATH
-          echo "Used kubeconfig file has $(sed -n '$=' $GARDENER_SA_PATH) lines"
-          make -C hack provision-gardener
-        env:
-          GARDENER_SECRET_NAME: ${{ secrets.GARDENER_SECRET_NAME }}
-          GARDENER_PROJECT: ${{ secrets.GARDENER_PROJECT }}
-          GARDENER_SA_PATH: /tmp/gardener-sa.yaml
-          GARDENER_SA: ${{ secrets.GARDENER_SA }}
-      - name: run test
-        run: |
-          make -C components/operator deploy
-          make -C tests/operator test
-        env:
-          IMG: ${{ inputs.image }}
-      - name: deprovision gardener
-        if: ${{ always() }}
-        run: make -C hack deprovision-gardener
-        env:
-          GARDENER_SA_PATH: /tmp/gardener-sa.yaml
 
-  serverless-integration-test:
-    if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - uses: ./.github/actions/setup-go
-      - uses: ./.github/actions/create-k3d-cluster
-      - name: run test
-        run: |
-          make install-serverless-custom-operator
-          make -C tests/serverless serverless-integration serverless-contract-tests
-          make remove-serverless
-        env:
-          IMG: ${{ inputs.image }}
 
-  git-auth-integration-test:
-    if: ${{ !startsWith(github.event_name, 'pull_request') || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - uses: ./.github/actions/setup-go
-      - uses: ./.github/actions/create-k3d-cluster
-      - name: run tests
-        run: |
-          make install-serverless-custom-operator
-          make -C tests/serverless git-auth-integration
-          make remove-serverless
-        env:
-          APP_TEST_GITHUB_SSH_AUTH_KEY: ${{ secrets.GIT_AUTH_TEST_GITHUB_SSH_KEY }}
-          APP_TEST_AZURE_BASIC_AUTH_USERNAME: ${{ secrets.GIT_AUTH_TEST_AZURE_USERNAME }}
-          APP_TEST_AZURE_BASIC_AUTH_PASSWORD: ${{ secrets.GIT_AUTH_TEST_AZURE_PASSWORD }}
-          IMG: ${{ inputs.image }}
+
+
+
+
+
+
