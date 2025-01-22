@@ -88,20 +88,21 @@ func (d *Deployment) podSpec() corev1.PodSpec {
 				Ports: []corev1.ContainerPort{
 					{
 						ContainerPort: 8080,
+						Protocol:      "TCP",
 					},
 				},
-				StartupProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/healthz",
-							Port: svcTargetPort,
-						},
-					},
-					InitialDelaySeconds: 0,
-					PeriodSeconds:       5,
-					SuccessThreshold:    1,
-					FailureThreshold:    30, // FailureThreshold * PeriodSeconds = 150s in this case, this should be enough for any function pod to start up
-				},
+				//StartupProbe: &corev1.Probe{
+				//	ProbeHandler: corev1.ProbeHandler{
+				//		HTTPGet: &corev1.HTTPGetAction{
+				//			Path: "/healthz",
+				//			Port: svcTargetPort,
+				//		},
+				//	},
+				//	InitialDelaySeconds: 0,
+				//	PeriodSeconds:       5,
+				//	SuccessThreshold:    1,
+				//	FailureThreshold:    30, // FailureThreshold * PeriodSeconds = 150s in this case, this should be enough for any function pod to start up
+				//},
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -124,6 +125,9 @@ func (d *Deployment) podSpec() corev1.PodSpec {
 					FailureThreshold: 3,
 					PeriodSeconds:    5,
 					TimeoutSeconds:   4,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](0),
 				},
 			},
 		},
@@ -160,13 +164,13 @@ func (d *Deployment) volumes() []corev1.Volume {
 		},
 	}
 	if runtime == serverlessv1alpha2.Python312 {
-		volumes = append(volumes, corev1.Volume{
-			// required by pip to save deps to .local dir
-			Name: "local",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
+		//volumes = append(volumes, corev1.Volume{
+		//	// required by pip to save deps to .local dir
+		//	Name: "local",
+		//	VolumeSource: corev1.VolumeSource{
+		//		EmptyDir: &corev1.EmptyDirVolumeSource{},
+		//	},
+		//})
 	}
 	return volumes
 }
@@ -174,10 +178,10 @@ func (d *Deployment) volumes() []corev1.Volume {
 func (d *Deployment) volumeMounts() []corev1.VolumeMount {
 	runtime := d.function.Spec.Runtime
 	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "sources",
-			MountPath: d.workingSourcesDir(),
-		},
+		//{
+		//	Name:      "sources",
+		//	MountPath: d.workingSourcesDir(),
+		//},
 	}
 	if runtime == serverlessv1alpha2.NodeJs20 || runtime == serverlessv1alpha2.NodeJs22 {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
@@ -188,17 +192,17 @@ func (d *Deployment) volumeMounts() []corev1.VolumeMount {
 		})
 	}
 	if runtime == serverlessv1alpha2.Python312 {
-		volumeMounts = append(volumeMounts,
-			corev1.VolumeMount{
-				Name:      "local",
-				MountPath: "/.local",
-			},
-			corev1.VolumeMount{
-				Name:      "package-registry-config",
-				ReadOnly:  true,
-				MountPath: path.Join(d.workingSourcesDir(), "package-registry-config/pip.conf"),
-				SubPath:   "pip.conf",
-			})
+		//volumeMounts = append(volumeMounts,
+		//	//corev1.VolumeMount{
+		//	//	Name:      "local",
+		//	//	MountPath: "/.local",
+		//	////},
+		//	//corev1.VolumeMount{
+		//	//	Name:      "package-registry-config",
+		//	//	ReadOnly:  true,
+		//	//	MountPath: path.Join(d.workingSourcesDir(), "package-registry-config/pip.conf"),
+		//	//	SubPath:   "pip.conf",
+		//	})
 	}
 	return volumeMounts
 }
@@ -251,10 +255,12 @@ npm start;`
 	case serverlessv1alpha2.Python312:
 		if dependencies != "" {
 			// if deps are not empty use npm
-			return `printf "${FUNC_HANDLER_SOURCE}" > handler.py;
+			return `echo ${PYTHONPATH};
+printf "${FUNC_HANDLER_SOURCE}" > handler.py;
 printf "${FUNC_HANDLER_DEPENDENCIES}" > requirements.txt;
-PIP_CONFIG_FILE=package-registry-config/pip.conf pip install --user --no-cache-dir -r /kubeless/requirements.txt;
+pip install --no-cache-dir -r /kubeless/requirements.txt;
 cd ..;
+chown -R root /kubeless.py;
 python /kubeless.py;`
 		}
 		return `printf "${FUNC_HANDLER_SOURCE}" > handler.py;
@@ -268,6 +274,11 @@ python /kubeless.py;`
 func (d *Deployment) envs() []corev1.EnvVar {
 	spec := &d.function.Spec
 	envs := []corev1.EnvVar{
+		{
+			//TODO: Add it for tracing
+			Name:  "SERVICE_NAMESPACE",
+			Value: d.Namespace,
+		},
 		{
 			Name:  "FUNC_HANDLER_SOURCE",
 			Value: spec.Source.Inline.Source,
@@ -288,6 +299,10 @@ func (d *Deployment) envs() []corev1.EnvVar {
 	if spec.Runtime == serverlessv1alpha2.Python312 {
 		envs = append(envs, []corev1.EnvVar{
 			{
+				Name:  "KUBELESS_INSTALL_VOLUME",
+				Value: "/kubeless",
+			},
+			{
 				Name:  "MOD_NAME",
 				Value: "handler",
 			},
@@ -295,6 +310,9 @@ func (d *Deployment) envs() []corev1.EnvVar {
 				Name:  "FUNC_HANDLER",
 				Value: "main",
 			},
+			// https://github.com/kubeless/runtimes/blob/master/stable/python/python.jsonnet#L45
+			{Name: "PYTHONPATH", Value: "$(KUBELESS_INSTALL_VOLUME)/lib.python3.12/site-packages:$(KUBELESS_INSTALL_VOLUME)"},
+			{Name: "PYTHONUNBUFFERED", Value: "TRUE"},
 		}...)
 	}
 	envs = append(envs, spec.Env...) //TODO: this order is critical, should we provide option for users to override envs?
